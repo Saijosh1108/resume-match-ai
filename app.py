@@ -29,6 +29,12 @@ st.caption(
     "and discover ways to strengthen your application."
 )
 
+st.info(
+    "This tool uses semantic similarity and dictionary-based skill "
+    "detection. It does not predict hiring outcomes or understand every "
+    "possible job requirement."
+)
+
 st.divider()
 
 
@@ -86,33 +92,37 @@ if st.button("🚀 Analyze Match", type="primary"):
                 resume_skills = extract_skills(resume_text)
                 job_skills = extract_skills(job_description)
 
-                # Compare detected skills
+                # Compare recognized skills
+                resume_skill_set = set(resume_skills)
+                job_skill_set = set(job_skills)
+
                 matched_skills = sorted(
-                    set(resume_skills) & set(job_skills)
+                    resume_skill_set & job_skill_set
                 )
 
                 missing_skills = sorted(
-                    set(job_skills) - set(resume_skills)
+                    job_skill_set - resume_skill_set
                 )
 
                 # Calculate skill coverage
-                if job_skills:
+                total_job_skills = len(job_skill_set)
+                matched_count = len(matched_skills)
+                missing_count = len(missing_skills)
+
+                if total_job_skills > 0:
                     skill_score = round(
-                        len(matched_skills)
-                        / len(job_skills)
-                        * 100,
+                        matched_count / total_job_skills * 100,
+                        2,
+                    )
+                    overall_score = round(
+                        (semantic_score + skill_score) / 2,
                         2,
                     )
                 else:
-                    skill_score = 0.0
+                    skill_score = None
+                    overall_score = None
 
-                # Experimental overall score
-                overall_score = round(
-                    (semantic_score + skill_score) / 2,
-                    2,
-                )
-
-                # Generate resume improvement suggestions
+                # Generate recommendations
                 recommendations = generate_recommendations(
                     resume_skills,
                     job_skills,
@@ -128,10 +138,16 @@ if st.button("🚀 Analyze Match", type="primary"):
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                st.metric(
-                    "🎯 Overall Match Score",
-                    f"{overall_score:.2f}%",
-                )
+                if overall_score is not None:
+                    st.metric(
+                        "🎯 Overall Match Score",
+                        f"{overall_score:.2f}%",
+                    )
+                else:
+                    st.metric(
+                        "🎯 Overall Match Score",
+                        "N/A",
+                    )
 
             with col2:
                 st.metric(
@@ -140,29 +156,51 @@ if st.button("🚀 Analyze Match", type="primary"):
                 )
 
             with col3:
-                st.metric(
-                    "🛠️ Skill Match Score",
-                    f"{skill_score:.2f}%",
-                )
+                if skill_score is not None:
+                    st.metric(
+                        "🛠️ Skill Match Score",
+                        f"{skill_score:.2f}%",
+                    )
+                else:
+                    st.metric(
+                        "🛠️ Skill Match Score",
+                        "N/A",
+                    )
 
             st.caption(
                 "The overall score equally averages semantic similarity "
-                "and detected skill coverage. This experimental metric "
-                "is not a prediction of hiring success."
+                "and recognized skill coverage. It is an experimental "
+                "metric, not a prediction of hiring success."
             )
 
             st.divider()
 
             # --------------------------------------------------
-            # Skill coverage chart
+            # Skill coverage summary
             # --------------------------------------------------
             st.header("📈 Skill Coverage")
 
-            total_skills = len(job_skills)
-            matched_count = len(matched_skills)
-            missing_count = len(missing_skills)
+            col1, col2, col3 = st.columns(3)
 
-            if total_skills > 0:
+            with col1:
+                st.metric(
+                    "Recognized Job Skills",
+                    total_job_skills,
+                )
+
+            with col2:
+                st.metric(
+                    "Matched Skills",
+                    matched_count,
+                )
+
+            with col3:
+                st.metric(
+                    "Missing Skills",
+                    missing_count,
+                )
+
+            if total_job_skills > 0:
                 chart_data = {
                     "Category": [
                         "Matched Skills",
@@ -182,13 +220,22 @@ if st.button("🚀 Analyze Match", type="primary"):
                 )
 
                 st.write(
-                    f"**Coverage:** {matched_count} of "
-                    f"{total_skills} detected job skills matched."
+                    f"**Recognized skill coverage:** {matched_count} "
+                    f"of {total_job_skills} detected job skills matched."
+                )
+
+                st.warning(
+                    "This percentage covers only skills recognized by "
+                    "the current dictionary. Requirements not included "
+                    "in the dictionary are excluded from the calculation."
                 )
 
             else:
-                st.info(
-                    "No recognized skills were found in the job description."
+                st.warning(
+                    "No skills from the current dictionary were detected "
+                    "in the job description. A skill match score cannot "
+                    "be calculated reliably. Try a more detailed job "
+                    "description or interpret semantic similarity separately."
                 )
 
             st.divider()
@@ -200,7 +247,7 @@ if st.button("🚀 Analyze Match", type="primary"):
 
             if matched_skills:
                 st.write(
-                    f"Found {matched_count} matching skills."
+                    f"Found {matched_count} matching recognized skills."
                 )
 
                 for skill in matched_skills:
@@ -225,15 +272,14 @@ if st.button("🚀 Analyze Match", type="primary"):
                 for skill in missing_skills:
                     st.write(f"❌ {skill}")
 
-            elif job_skills:
+            elif total_job_skills > 0:
                 st.success(
-                    "All detected job skills were found in your resume!"
+                    "All detected job skills were found in your resume."
                 )
 
             else:
                 st.info(
-                    "No skills from the current skill database "
-                    "were detected in the job description."
+                    "No recognized job skills are available to compare."
                 )
 
             st.divider()
@@ -257,7 +303,6 @@ if st.button("🚀 Analyze Match", type="primary"):
                     st.markdown(
                         f"**{i}.** {recommendation}"
                     )
-
             else:
                 st.info(
                     "No recommendations are available for this analysis."
@@ -274,11 +319,11 @@ if st.button("🚀 Analyze Match", type="primary"):
 
                 with col1:
                     st.subheader("Resume Skills")
-                    st.write(resume_skills)
+                    st.write(resume_skills or "No recognized skills found.")
 
                 with col2:
                     st.subheader("Job Description Skills")
-                    st.write(job_skills)
+                    st.write(job_skills or "No recognized skills found.")
 
             # --------------------------------------------------
             # Extracted resume text
@@ -297,3 +342,4 @@ if st.button("🚀 Analyze Match", type="primary"):
                 "An error occurred while analyzing your resume."
             )
             st.exception(error)
+
