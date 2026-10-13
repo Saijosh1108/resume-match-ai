@@ -4,6 +4,7 @@ import streamlit as st
 from src.resume_parser import extract_text_from_pdf
 from src.matcher import calculate_similarity
 from src.skill_extractor import extract_skills
+from src.recommendations import generate_recommendations
 
 
 # --------------------------------------------------
@@ -23,6 +24,11 @@ st.title("🎯 ResumeMatch AI")
 st.write(
     "AI-powered resume and job description matching system."
 )
+st.caption(
+    "Compare your resume with a job description, identify skill gaps, "
+    "and discover ways to strengthen your application."
+)
+
 st.divider()
 
 
@@ -41,7 +47,7 @@ st.header("2️⃣ Paste Job Description")
 job_description = st.text_area(
     "Job Description",
     height=300,
-    placeholder="Paste the job description here...",
+    placeholder="Paste the complete job description here...",
 )
 
 
@@ -54,7 +60,7 @@ if st.button("🚀 Analyze Match", type="primary"):
         st.error("Please upload your resume.")
 
     elif not job_description.strip():
-        st.error("Please paste the job description.")
+        st.error("Please paste a job description.")
 
     else:
         try:
@@ -80,7 +86,7 @@ if st.button("🚀 Analyze Match", type="primary"):
                 resume_skills = extract_skills(resume_text)
                 job_skills = extract_skills(job_description)
 
-                # Compare skills
+                # Compare detected skills
                 matched_skills = sorted(
                     set(resume_skills) & set(job_skills)
                 )
@@ -100,14 +106,21 @@ if st.button("🚀 Analyze Match", type="primary"):
                 else:
                     skill_score = 0.0
 
-                # Overall score: equal weighting
+                # Experimental overall score
                 overall_score = round(
                     (semantic_score + skill_score) / 2,
                     2,
                 )
 
+                # Generate resume improvement suggestions
+                recommendations = generate_recommendations(
+                    resume_skills,
+                    job_skills,
+                    missing_skills,
+                )
+
             # --------------------------------------------------
-            # Results
+            # Match results
             # --------------------------------------------------
             st.success("Analysis complete!")
             st.header("📊 Match Results")
@@ -134,8 +147,8 @@ if st.button("🚀 Analyze Match", type="primary"):
 
             st.caption(
                 "The overall score equally averages semantic similarity "
-                "and detected skill coverage. It is experimental and "
-                "does not predict hiring success."
+                "and detected skill coverage. This experimental metric "
+                "is not a prediction of hiring success."
             )
 
             st.divider()
@@ -166,7 +179,7 @@ if st.button("🚀 Analyze Match", type="primary"):
                     x="Category",
                     y="Count",
                     horizontal=True,
-                  )
+                )
 
                 st.write(
                     f"**Coverage:** {matched_count} of "
@@ -192,10 +205,9 @@ if st.button("🚀 Analyze Match", type="primary"):
 
                 for skill in matched_skills:
                     st.write(f"✅ {skill}")
+
             else:
-                st.info(
-                    "No matching skills were detected."
-                )
+                st.info("No matching skills were detected.")
 
             st.divider()
 
@@ -227,7 +239,34 @@ if st.button("🚀 Analyze Match", type="primary"):
             st.divider()
 
             # --------------------------------------------------
-            # Detailed skill lists
+            # Resume improvement suggestions
+            # --------------------------------------------------
+            st.header("💡 Resume Improvement Suggestions")
+
+            st.write(
+                "Use these suggestions to improve how your relevant "
+                "experience is presented. Only include skills and "
+                "experience you genuinely have."
+            )
+
+            if recommendations:
+                for i, recommendation in enumerate(
+                    recommendations,
+                    start=1,
+                ):
+                    st.markdown(
+                        f"**{i}.** {recommendation}"
+                    )
+
+            else:
+                st.info(
+                    "No recommendations are available for this analysis."
+                )
+
+            st.divider()
+
+            # --------------------------------------------------
+            # All detected skills
             # --------------------------------------------------
             with st.expander("🔍 View All Detected Skills"):
 
@@ -245,6 +284,7 @@ if st.button("🚀 Analyze Match", type="primary"):
             # Extracted resume text
             # --------------------------------------------------
             with st.expander("📄 View Extracted Resume Text"):
+
                 st.text_area(
                     "Resume content",
                     resume_text,
