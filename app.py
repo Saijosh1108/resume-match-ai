@@ -337,9 +337,12 @@ if st.button("🚀 Analyze Match", type="primary"):
                     disabled=True,
                 )
 
-        except Exception as error:
+        except ValueError as error:
+            st.error(str(error))
+
+        except Exception:
             st.error(
-                "An error occurred while analyzing your resume."
+                "Something went wrong while analyzing your resume. "
+                "Please check the PDF and try again."
             )
-            st.exception(error)
 
